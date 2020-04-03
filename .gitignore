@@ -1,3 +1,4 @@
 /.idea/
 /node_modules
+/bin-list-output.csv
 /bin-list-input.txt

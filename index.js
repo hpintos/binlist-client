@@ -1,35 +1,46 @@
 const fileapi = require('./file.api');
 const lookup = require('binlookup')();
-const SECONDS_INTERVAL = 70;
+const SECONDS_INTERVAL = 65;
 
 let i = 0;
 function readAndProcessOneEveryInterval() {
     console.time('BIN_PROCESS');
     fileapi.getLines().then((binListInput) => {
+        process(getBinListInputSlice(binListInput));
         const intervalId = setInterval(async() => {
             if (i === binListInput.length - 1) {
                 console.timeEnd('BIN_PROCESS');
                 clearInterval(intervalId);
             }
-            let binNumber = binListInput[i];
-            try {
-                const { scheme, type, brand, prepaid, bank, country } = await lookup(binNumber);
-                await fileapi.save({
-                    binNumber,
-                    scheme,
-                    type,
-                    brand,
-                    prepaid,
-                    'bank': bank.name,
-                    'country': country.name
-                });
-                console.log(i + ' - ' + binNumber + ' DONE');
-                i++;
-            } catch (e) {
-                console.log( `Failed for binNumber ${binNumber} (index ${i}). Retrying in ${SECONDS_INTERVAL} seconds...`);
-            }
+            process(getBinListInputSlice(binListInput));
         }, SECONDS_INTERVAL * 1000);
     });
+}
+
+async function process(binList) {
+    let binNumber;
+    try {
+        for (let j = 0; j < binList.length; j++, i++) {
+            binNumber = binList[j];
+            const { scheme, type, brand, prepaid, bank, country } = await lookup(binNumber);
+            await fileapi.save({
+                binNumber,
+                scheme,
+                type,
+                brand,
+                prepaid,
+                'bank': bank.name,
+                'country': country.name
+            });
+            console.log(i + ' - ' + binNumber + ' DONE');
+        }
+    } catch (e) {
+        console.log( `Failed for binNumber ${binNumber} (index ${i}). Retrying in ${SECONDS_INTERVAL} seconds...`);
+    }
+}
+
+function getBinListInputSlice(binListInput) {
+    return binListInput.slice(i, binListInput.length - i >= 10 ? i + 10 : binListInput.length - i);
 }
 
 readAndProcessOneEveryInterval();
