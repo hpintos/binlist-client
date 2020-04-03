@@ -1,12 +1,11 @@
 const fileapi = require('./file.api');
 const lookup = require('binlookup')();
-const SECONDS_INTERVAL = 15;
+const SECONDS_INTERVAL = 11;
 
 let i = 0;
 function readAndProcessOneEveryInterval() {
     console.time('BIN_PROCESS');
     fileapi.getLines().then((binListInput) => {
-        // processBatch(getBinListInputSlice(binListInput));
         const intervalId = setInterval(async() => {
             if (i === binListInput.length - 1) {
                 console.timeEnd('BIN_PROCESS');
@@ -21,19 +20,22 @@ async function process(binList) {
     let binNumber;
     try {
         binNumber = binList[i];
-        const { scheme, type, brand, prepaid, bank, country } = await lookup(binNumber);
-        await fileapi.save({
-            binNumber,
-            scheme,
-            type,
-            brand,
-            prepaid,
-            'bank': bank.name,
-            'country': country.name
-        });
-        console.log(i + ' - ' + binNumber + ' DONE');
-
+        if (binNumber !== '' && !isNaN(binNumber)) {
+            const { scheme, type, brand, prepaid, bank, country } = await lookup(binNumber);
+            await fileapi.save({
+                binNumber,
+                scheme,
+                type,
+                brand,
+                prepaid,
+                'bank': bank !== undefined ? bank.name : '',
+                'country': country !== undefined ? country.name : ''
+            });
+            console.log(i + ' - ' + binNumber + ' DONE');
+        }
+        i++;
     } catch (e) {
+        console.log('Error: ', e);
         console.log( `Failed for binNumber ${binNumber} (index ${i}). Retrying in ${SECONDS_INTERVAL} seconds...`);
     }
 }
